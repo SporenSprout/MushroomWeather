@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mushroom Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        /* Custom base styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #fdfbf6; /* Light beige background */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .font-poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+        .font-roboto {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        /* Circular Progress Bar SVG Styling */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.5s ease-out;
+            transform: rotate(-90deg); /* Start from the top */
+            transform-origin: 50% 50%;
+            stroke-linecap: round; /* Rounded ends */
+        }
+        .progress-ring__background {
+             stroke: rgba(0, 0, 0, 0.1); /* Background circle color */
+        }
+        .dark .progress-ring__background {
+             stroke: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Progress bar stroke colors - Matches likelihood categories */
+        .stroke-great { stroke: #4caf50; } /* Green */
+        .stroke-good { stroke: #fbbf24; } /* Amber */
+        .stroke-fair { stroke: #fb923c; } /* Orange */
+        .stroke-poor { stroke: #f87171; } /* Red */
+
+        /* Text inside the circle */
+        .progress-ring__text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700; /* bold */
+            font-size: 1.1em; /* Adjust as needed */
+            fill: #374151; /* Tailwind gray-700 */
+        }
+        .dark .progress-ring__text {
+             fill: #d1d5db; /* Tailwind gray-300 */
+        }
+
+
+        /* Card animations */
+        .forecast-card {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s ease-out forwards;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.3s ease;
+        }
+
+        .forecast-card:hover {
+             transform: translateY(0px) scale(1.03);
+             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+         .dark .forecast-card:hover {
+             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+         }
+
+
+        /* Staggered fade-in animation */
+        #forecast-container > .forecast-card:nth-child(1) { animation-delay: 0.1s; }
+        #forecast-container > .forecast-card:nth-child(2) { animation-delay: 0.2s; }
+        #forecast-container > .forecast-card:nth-child(3) { animation-delay: 0.3s; }
+        #forecast-container > .forecast-card:nth-child(4) { animation-delay: 0.4s; }
+        #forecast-container > .forecast-card:nth-child(5) { animation-delay: 0.5s; }
+        #forecast-container > .forecast-card:nth-child(6) { animation-delay: 0.6s; }
+        #forecast-container > .forecast-card:nth-child(7) { animation-delay: 0.7s; }
+
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Light/Dark mode icon colors (for likelihood text/icon) */
+        .icon-positive-light { color: #166534; } /* Tailwind green-800 */
+        .icon-negative-light { color: #dc2626; } /* Tailwind red-600 */
+
+        .dark .icon-positive-dark { color: #a3e635; } /* Tailwind lime-400 */
+        .dark .icon-negative-dark { color: #f87171; } /* Tailwind red-400 */
+
+
+        /* Ensure icons inside cards adapt */
+        .dark .forecast-card .fa-temperature-high { color: #ef9a9a; }
+        .dark .forecast-card .fa-tint { color: #90caf9; }
+        .dark .forecast-card .fa-wind { color: #bdbdbd; }
+        .dark .forecast-card .fa-cloud-rain { color: #80deea; }
+        .dark .forecast-card .text-stone-700 { color: #bdbdbd; }
+        .dark .forecast-card .text-gray-600 { color: #e0e0e0; } /* Weather icon */
+        .dark .forecast-card .text-gray-800 { color: #f5f5f5; }
+        .dark .forecast-card .text-gray-700.opacity-90 { color: #bdbdbd; }
+
+    </style>
+    <script>
+        // Tailwind dark mode setup
+        tailwind.config = {
+            darkMode: 'class',
+             theme: { extend: {} }
+        }
+
+        // Function to set the theme icon visibility
+        function updateThemeIcons(isDarkMode) {
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+            if (sunIcon && moonIcon) {
+                if (isDarkMode) { moonIcon.classList.add('hidden'); sunIcon.classList.remove('hidden'); }
+                else { moonIcon.classList.remove('hidden'); sunIcon.classList.add('hidden'); }
+            }
+        }
+
+        // Function to apply theme based on preference and localStorage
+        function applyInitialTheme() {
+            const htmlElement = document.documentElement;
+            let isDarkMode;
+            if (localStorage.theme === 'dark') isDarkMode = true;
+            else if (localStorage.theme === 'light') isDarkMode = false;
+            else isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (isDarkMode) htmlElement.classList.add('dark');
+            else htmlElement.classList.remove('dark');
+            updateThemeIcons(isDarkMode);
+        }
+         applyInitialTheme();
+
+    </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col">
+
+    <div class="text-center py-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800">
+        *USA Locations Only
+    </div>
+
+    <header class="relative text-center py-8 md:py-12 bg-white dark:bg-gray-800 shadow-sm transition-colors duration-300">
+        <h1 class="font-poppins text-4xl md:text-5xl font-bold text-green-900 dark:text-green-300 transition-colors duration-300">Mushroom Weather</h1>
+        <p class="font-roboto italic text-lg md:text-xl text-yellow-600 dark:text-yellow-400 mt-2">Precise Weather for Peak Foraging</p>
+
+        <div class="mt-4 text-gray-600 dark:text-gray-400">
+             <span>Provided by Spore n' Sprout</span>
+        </div>
+
+        <button id="dark-mode-toggle" aria-label="Toggle dark mode" class="absolute top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+            <i id="moon-icon" class="fas fa-moon text-lg"></i>
+            <i id="sun-icon" class="fas fa-sun text-lg hidden"></i>
+        </button>
+    </header>
+
+    <section id="location-input-section" class="text-center py-8 md:py-12 px-4">
+        <form id="location-form" class="max-w-md mx-auto relative">
+            <label for="location-input" class="sr-only">Enter City, State</label>
+            <input type="text" id="location-input" name="location-input"
+                   class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-lg placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white transition-colors duration-300"
+                   placeholder="Enter City, State (e.g., Seattle, WA)"
+                   required autocomplete="off">
+
+             <button type="submit" class="mt-4 px-6 py-2 bg-green-900 dark:bg-green-300 text-white dark:text-green-900 font-semibold rounded-full hover:bg-green-800 dark:hover:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-300 disabled:opacity-50" disabled>
+                Get Forecast
+            </button>
+        </form>
+         <p id="loading-message" class="mt-4 text-gray-600 dark:text-gray-400 hidden transition-colors duration-300">Fetching forecast...</p>
+         <p id="error-message" class="mt-4 text-red-600 dark:text-red-400 hidden transition-colors duration-300"></p>
+    </section>
+
+    <main id="forecast-container" class="flex-grow container mx-auto px-4 py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-6 justify-items-center">
+        </main>
+
+    <footer class="text-center py-4 mt-12 text-gray-500 dark:text-gray-400 text-sm bg-white dark:bg-gray-800 shadow-inner transition-colors duration-300">
+        Weather data sourced from the National Weather Service (Public Domain). Geocoding via LocationIQ.
+        Mushroom likelihood is an estimate. Always forage responsibly and identify mushrooms with certainty.
+    </footer>
+
+    <script>
+        // --- DOM Element References ---
+        const locationForm = document.getElementById('location-form');
+        const locationInput = document.getElementById('location-input');
+        const forecastContainer = document.getElementById('forecast-container');
+        const loadingMessage = document.getElementById('loading-message');
+        const errorMessage = document.getElementById('error-message');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const submitButton = locationForm.querySelector('button[type="submit"]');
+        const htmlElement = document.documentElement;
+
+        // --- API Keys and Config ---
+        const LOCATIONIQ_ACCESS_TOKEN = 'pk.1c7f2a858a64ec28571b1bc755ac1c38';
+        const NWS_USER_AGENT = '(Mushroom Weather App, your-email@example.com)'; // Replace with your info
+
+        // --- Weather Icons Mapping (Simplified) ---
+        const ICON_SUN = "fa-solid fa-sun";
+        const ICON_PART_CLOUDY = "fa-solid fa-cloud-sun";
+        const ICON_CLOUDY = "fa-solid fa-cloud";
+        const ICON_RAIN = "fa-solid fa-cloud-showers-heavy"; // Consolidate rain icons
+        const ICON_SNOW = "fa-solid fa-snowflake";
+        // const ICON_UNKNOWN = "fa-solid fa-question-circle"; // No longer used directly
+
+        // --- Refined Weather Icon Logic ---
+        function getWeatherIcon(shortForecast, chanceOfRain) {
+            const forecastLower = shortForecast.toLowerCase();
+            const rainChanceThreshold = 30; // Percentage threshold to show rain icon
+
+            // 1. Check for Snow first
+            if (forecastLower.includes("snow")) return ICON_SNOW;
+
+            // 2. Check for significant precipitation (> threshold chance)
+            if (chanceOfRain > rainChanceThreshold) {
+                if (forecastLower.includes("thunderstorm") || forecastLower.includes("heavy")) return ICON_RAIN;
+                if (forecastLower.includes("showers") || forecastLower.includes("rain")) return ICON_RAIN;
+                 console.log(`High rain chance (${chanceOfRain}%) without explicit term in "${shortForecast}", showing rain icon.`);
+                 return ICON_RAIN;
+            }
+
+            // --- Conditions below only apply if chanceOfRain <= threshold ---
+            if (forecastLower.includes("fog")) return ICON_CLOUDY;
+            if (forecastLower.includes("mostly cloudy") || forecastLower.includes("cloudy")) {
+                 if (forecastLower.includes("sunny") || forecastLower.includes("clear") || forecastLower.includes("partly")) {
+                     return ICON_PART_CLOUDY;
+                 }
+                 return ICON_CLOUDY;
+            }
+            if (forecastLower.includes("partly sunny") || forecastLower.includes("partly cloudy")) {
+                return ICON_PART_CLOUDY;
+            }
+            if (forecastLower.includes("mostly sunny") || forecastLower.includes("sunny") || forecastLower.includes("clear")) {
+                return ICON_SUN;
+            }
+            if (forecastLower.includes("cloud")) return ICON_CLOUDY; // Catch-all for generic cloud
+
+            // 7. Final fallback: Default to Partly Cloudy if unknown
+            console.warn(`Could not determine specific icon for: "${shortForecast}" with ${chanceOfRain}% rain chance. Defaulting to Partly Cloudy.`);
+            return ICON_PART_CLOUDY;
+        }
+
+
+        // --- Enable/Disable Submit Button ---
+        locationInput.addEventListener('input', () => {
+            submitButton.disabled = locationInput.value.trim() === '';
+        });
+
+        // --- Dark Mode Toggle Logic ---
+        if (darkModeToggle) {
+             darkModeToggle.addEventListener('click', () => {
+                const isDarkMode = htmlElement.classList.toggle('dark');
+                localStorage.theme = isDarkMode ? 'dark' : 'light';
+                updateThemeIcons(isDarkMode);
+            });
+         }
+
+
+        // --- Event Listener for Form Submission ---
+        locationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const locationName = locationInput.value.trim();
+            if (!locationName) return;
+
+            errorMessage.classList.add('hidden');
+            forecastContainer.innerHTML = '';
+            loadingMessage.classList.remove('hidden');
+            submitButton.disabled = true;
+
+            let foundLocationName = locationName; // Initialize with user input
+
+            try {
+                // --- Step 1: LocationIQ Geocoding ---
+                const geoUrl = `https://us1.locationiq.com/v1/search?key=${LOCATIONIQ_ACCESS_TOKEN}&q=${encodeURIComponent(locationName)}&format=json`;
+                console.log("Fetching LocationIQ:", geoUrl);
+                const geoResponse = await fetch(geoUrl);
+                if (!geoResponse.ok) {
+                    let errorMsg = `Geocoding failed: ${geoResponse.statusText} (${geoResponse.status})`;
+                     try { const errorData = await geoResponse.json(); if (errorData.error) { errorMsg += ` - ${errorData.error}`; } } catch (e) { /* Ignore */ }
+                     throw new Error(errorMsg);
+                }
+                const geoData = await geoResponse.json();
+                if (!geoData || geoData.length === 0 || !geoData[0].lat || !geoData[0].lon) throw new Error("Location not found via LocationIQ.");
+                const lat = parseFloat(geoData[0].lat).toFixed(4);
+                const lon = parseFloat(geoData[0].lon).toFixed(4);
+                foundLocationName = geoData[0].display_name || locationName; // Use display name from geocoding
+                console.log(`Geocoded: ${foundLocationName} at ${lat}, ${lon}`);
+
+                // --- Step 2: NWS Points API ---
+                const pointsUrl = `https://api.weather.gov/points/${lat},${lon}`;
+                console.log("Fetching NWS points:", pointsUrl);
+                const pointsResponse = await fetch(pointsUrl, { headers: { 'User-Agent': NWS_USER_AGENT } });
+                if (!pointsResponse.ok) throw new Error(`NWS Points API failed: ${pointsResponse.statusText} (${pointsResponse.status})`);
+                const pointsData = await pointsResponse.json();
+                const forecastUrl = pointsData.properties?.forecast;
+                const forecastHourlyUrl = pointsData.properties?.forecastHourly;
+                if (!forecastUrl || !forecastHourlyUrl) throw new Error("Could not retrieve forecast URLs from NWS Points API.");
+                console.log("NWS Forecast URL:", forecastUrl);
+                console.log("NWS Hourly Forecast URL:", forecastHourlyUrl);
+
+                // --- Step 3: Fetch BOTH NWS Forecasts Concurrently ---
+                const [forecastResponse, hourlyResponse] = await Promise.all([
+                    fetch(forecastUrl, { headers: { 'User-Agent': NWS_USER_AGENT } }),
+                    fetch(forecastHourlyUrl, { headers: { 'User-Agent': NWS_USER_AGENT } })
+                ]);
+
+                if (!forecastResponse.ok) throw new Error(`NWS Forecast API failed: ${forecastResponse.statusText} (${forecastResponse.status})`);
+                if (!hourlyResponse.ok) console.warn(`NWS Hourly Forecast API failed: ${hourlyResponse.statusText} (${hourlyResponse.status})`);
+
+                const forecastData = await forecastResponse.json();
+                const hourlyData = hourlyResponse.ok ? await hourlyResponse.json() : null;
+
+                 if (!forecastData.properties || !forecastData.properties.periods) throw new Error("Invalid NWS Forecast API response structure.");
+
+                 // --- Step 4: Process Hourly Data for Humidity Lookup ---
+                 const hourlyHumidityMap = new Map();
+                 if (hourlyData && hourlyData.properties && hourlyData.properties.periods) {
+                     hourlyData.properties.periods.forEach(hourlyPeriod => {
+                         if (hourlyPeriod.relativeHumidity?.value !== null && hourlyPeriod.relativeHumidity?.value !== undefined) {
+                             hourlyHumidityMap.set(hourlyPeriod.startTime, hourlyPeriod.relativeHumidity.value);
+                         }
+                     });
+                     console.log(`Processed ${hourlyHumidityMap.size} valid hourly humidity entries.`);
+                 } else {
+                     console.warn("Could not process hourly forecast data.");
+                 }
+
+                 // --- Step 5: Process and Display Daily Forecast ---
+                 // Pass the potentially updated foundLocationName
+                 displayForecast(forecastData.properties.periods, foundLocationName, hourlyHumidityMap);
+
+            } catch (error) {
+                console.error("Error fetching weather data:", error);
+                errorMessage.textContent = `Error: ${error.message}. Please check the location or try again.`;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loadingMessage.classList.add('hidden');
+                submitButton.disabled = locationInput.value.trim() === '';
+            }
+        });
+
+
+        // --- Calculate Mushroom Likelihood Score (Revised Generous Logic) ---
+        function calculateLikelihood(averageTempF, humidity, currentChanceOfRain, allPeriods, currentPeriodIndex, locationDisplayName) {
+
+            // --- General Generous Scoring ---
+            let score = 35; // Start with a base score closer to Fair/Good
+
+            // 🌡️ Temperature Scoring (More Generous)
+            if (averageTempF >= 50 && averageTempF <= 85) score += 25; // Slightly reduced max points
+            else if ((averageTempF >= 40 && averageTempF < 50) || (averageTempF > 85 && averageTempF <= 90)) score += 15; // Still good points
+            else if (averageTempF < 40 || averageTempF > 90) score -= 5; // Reduced penalty
+
+            // 💧 Humidity Scoring (More Generous)
+            if (humidity !== null && humidity !== undefined) {
+                if (humidity >= 65) score += 30; // Lowered threshold for high points
+                else if (humidity >= 50) score += 20; // 50-64%
+                else if (humidity >= 30) score += 10; // 30-49%
+                else score -= 10; // Penalize only very low (<30%)
+            } // No penalty if humidity is unknown
+
+            // 🌧️ Rainfall Scoring (Generous - focuses on *any* significant recent rain)
+            let recentRainScore = 0;
+            const lookbackCount = Math.min(currentPeriodIndex, 6);
+            const relevantIndices = [currentPeriodIndex];
+            for (let i = 1; i <= lookbackCount; i++) {
+                relevantIndices.push(currentPeriodIndex - i);
+            }
+            let anySignificantRain = false;
+            relevantIndices.forEach(index => {
+                let periodRainChance;
+                if (index === currentPeriodIndex) { periodRainChance = currentChanceOfRain; }
+                else if (index >= 0 && index < allPeriods.length) { periodRainChance = allPeriods[index]?.probabilityOfPrecipitation?.value ?? 0; }
+                else { return; }
+
+                if (periodRainChance >= 60) { recentRainScore += 12; anySignificantRain = true; } // Slightly more points
+                else if (periodRainChance >= 30) { recentRainScore += 6; anySignificantRain = true; }
+            });
+
+            // Boost score significantly if there was any recent rain > 30%
+            if(anySignificantRain) {
+                score += Math.min(recentRainScore, 25); // Add capped rain score (max 25)
+            } else {
+                 score -= 5; // Small penalty for persistent dryness
+            }
+
+            // Removed Dry Bias for more generosity
+
+            // 🧠 Smart Clamping
+            score = Math.max(0, Math.min(100, score)); // Ensure score is between 0 and 100
+            console.log(`Calculated score: ${score} (Temp: ${averageTempF}, Humidity: ${humidity}, Rain: ${currentChanceOfRain})`);
+            return Math.round(score);
+        }
+
+
+        // --- Get Likelihood Details (Updated Categories & Colors) ---
+        function getLikelihoodDetails(score) {
+             let iconTextClass = "";
+             if (score < 30) { // Poor = Red Icon/Text
+                 iconTextClass = "icon-negative-light dark:icon-negative-dark";
+             } else { // Fair, Good, Great = Green Icon/Text
+                 iconTextClass = "icon-positive-light dark:icon-positive-dark";
+             }
+
+            // Poor: Red, Fair: Orange, Good: Yellow, Great: Green
+            if (score >= 75) return { label: "Great", strokeClass: "stroke-great", iconClass: iconTextClass, mushroomIcon: "fa-solid fa-face-grin-stars" };
+            if (score >= 50) return { label: "Good", strokeClass: "stroke-good", iconClass: iconTextClass, mushroomIcon: "fa-solid fa-face-smile" };
+            if (score >= 30) return { label: "Fair", strokeClass: "stroke-fair", iconClass: iconTextClass, mushroomIcon: "fa-solid fa-face-meh" };
+            return { label: "Poor", strokeClass: "stroke-poor", iconClass: iconTextClass, mushroomIcon: "fa-solid fa-face-frown" };
+        }
+
+        // --- Display Forecast Cards ---
+        function displayForecast(allPeriods, locationName, hourlyHumidityMap) {
+            forecastContainer.innerHTML = '';
+
+            const locationHeader = document.createElement('h2');
+            locationHeader.textContent = `7-Day Forecast for ${locationName}`; // Updated header text slightly
+            locationHeader.className = 'text-xl md:text-2xl font-semibold text-center text-green-800 dark:text-green-300 mb-6 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-7';
+            forecastContainer.appendChild(locationHeader);
+
+            const dailyPeriods = allPeriods
+                .map((p, index) => ({ ...p, originalIndex: index }))
+                .filter(p => p.isDaytime === true)
+                .slice(0, 7);
+
+            if (dailyPeriods.length === 0) {
+                 errorMessage.textContent = "Could not extract daily forecast data.";
+                 errorMessage.classList.remove('hidden');
+                 return;
+            }
+
+            dailyPeriods.forEach((period, displayIndex) => {
+                const dayName = period.name;
+                const date = new Date(period.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const tempHigh = period.temperature;
+                const nextPeriod = allPeriods[period.originalIndex + 1];
+                const tempLow = (nextPeriod && !nextPeriod.isDaytime) ? nextPeriod.temperature : null;
+
+                // Calculate Average Temperature for Likelihood
+                let avgTempForCalc;
+                if (tempLow !== null) {
+                    avgTempForCalc = (tempHigh + tempLow) / 2;
+                } else {
+                    avgTempForCalc = tempHigh;
+                }
+
+                // Get Humidity with Improved Fallback
+                let humidity = hourlyHumidityMap.get(period.startTime); // Try exact hour
+                let humidityTimeKey = period.startTime; // Keep track of which time we used
+
+                // Fallback 1: Try next hour
+                if (humidity === undefined || humidity === null) {
+                    const nextHourDate = new Date(period.startTime);
+                    nextHourDate.setHours(nextHourDate.getHours() + 1);
+                    const offsetMatch = period.startTime.match(/([+-]\d{2}:\d{2})$/);
+                    const offset = offsetMatch ? offsetMatch[1] : '+00:00';
+                    const nextHourStartTime = nextHourDate.toISOString().replace('Z', offset);
+                    humidity = hourlyHumidityMap.get(nextHourStartTime);
+                    if (humidity !== undefined && humidity !== null) {
+                        humidityTimeKey = nextHourStartTime;
+                        // console.log(`Humidity fallback: Used next hour (${nextHourStartTime})`);
+                    }
+                }
+                // Fallback 2: Try previous hour
+                if (humidity === undefined || humidity === null) {
+                    const prevHourDate = new Date(period.startTime);
+                    prevHourDate.setHours(prevHourDate.getHours() - 1);
+                    const offsetMatch = period.startTime.match(/([+-]\d{2}:\d{2})$/);
+                    const offset = offsetMatch ? offsetMatch[1] : '+00:00';
+                    const prevHourStartTime = prevHourDate.toISOString().replace('Z', offset);
+                    humidity = hourlyHumidityMap.get(prevHourStartTime);
+                     if (humidity !== undefined && humidity !== null) {
+                        humidityTimeKey = prevHourStartTime;
+                        // console.log(`Humidity fallback: Used previous hour (${prevHourStartTime})`);
+                    }
+                }
+
+                // Fallback 3: Use daily period humidity if still not found
+                if (humidity === undefined || humidity === null) {
+                    humidity = period.relativeHumidity?.value ?? null;
+                     if (humidity !== null) {
+                         // console.log(`Humidity fallback: Used daily period value`);
+                     } else {
+                          // console.log(`Humidity fallback: No humidity found`);
+                     }
+                }
+
+                // Format for display
+                const displayHumidity = (humidity !== null && humidity !== undefined) ? `${humidity}%` : '--';
+                const displayTempLow = (tempLow !== null) ? `${tempLow}°F` : '--';
+                const displayWindSpeed = period.windSpeed ?? '--';
+
+                const chanceOfRain = period.probabilityOfPrecipitation?.value ?? 0;
+                const shortForecast = period.shortForecast ?? "Not available";
+                const weatherIconClass = getWeatherIcon(shortForecast, chanceOfRain);
+
+                // Calculate Likelihood using Average Temp and new logic
+                // Pass the correct location name variable
+                const likelihoodScore = calculateLikelihood(avgTempForCalc, humidity, chanceOfRain, allPeriods, period.originalIndex, locationName);
+                const likelihoodDetails = getLikelihoodDetails(likelihoodScore); // Contains label, strokeClass, iconClass, mushroomIcon
+
+                // SVG Circle Calculations
+                const radius = 30; // Adjust radius as needed
+                const strokeWidth = 6; // Adjust stroke width as needed
+                const normalizedRadius = radius - strokeWidth / 2;
+                const circumference = normalizedRadius * 2 * Math.PI;
+                const strokeDashoffset = circumference - (likelihoodScore / 100) * circumference;
+
+                const card = document.createElement('div');
+                card.className = `forecast-card w-[220px] p-4 rounded-lg shadow-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 flex flex-col space-y-3 transition-colors duration-300 min-h-[340px]`;
+                card.style.animationDelay = `${(displayIndex + 1) * 0.08}s`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-poppins font-bold text-lg">${dayName}</p>
+                            <p class="font-roboto text-sm text-stone-700 dark:text-stone-300">${date}</p>
+                        </div>
+                        <i class="${weatherIconClass} text-2xl text-gray-600 dark:text-gray-300 opacity-80" title="${shortForecast}"></i>
+                    </div>
+
+                     <div class="pt-2 flex-grow flex flex-col items-center">
+                        <p class="text-sm font-semibold mb-1 text-center">Successful Hunting</p>
+                        <div class="relative h-20 w-20 mx-auto">
+                            <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 ${radius * 2} ${radius * 2}">
+                                <circle
+                                    class="progress-ring__background"
+                                    stroke-width="${strokeWidth}"
+                                    fill="transparent"
+                                    r="${normalizedRadius}"
+                                    cx="${radius}"
+                                    cy="${radius}"
+                                />
+                                <circle
+                                    class="progress-ring__circle ${likelihoodDetails.strokeClass}"
+                                    stroke-width="${strokeWidth}"
+                                    stroke-dasharray="${circumference} ${circumference}"
+                                    style="stroke-dashoffset:${strokeDashoffset}"
+                                    fill="transparent"
+                                    r="${normalizedRadius}"
+                                    cx="${radius}"
+                                    cy="${radius}"
+                                />
+                                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="progress-ring__text">
+                                    ${likelihoodScore}%
+                                </text>
+                            </svg>
+                        </div>
+                         <p class="text-xs font-bold text-center mt-2 ${likelihoodDetails.iconClass}">${likelihoodDetails.label}</p>
+                         <div class="mt-auto pt-2">
+                             <i class="${likelihoodDetails.mushroomIcon} ${likelihoodDetails.iconClass} text-3xl" title="${likelihoodDetails.label}"></i>
+                         </div>
+                    </div>
+
+                    <div class="text-sm space-y-1.5 mt-2">
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center"><i class="fas fa-temperature-high w-5 mr-1.5 text-red-600 dark:text-red-400"></i> High / Low:</span>
+                            <span class="font-semibold">${tempHigh}°F / ${displayTempLow}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center"><i class="fas fa-tint w-5 mr-1.5 text-blue-500 dark:text-blue-300"></i> Humidity:</span>
+                            <span class="font-semibold">${displayHumidity}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center"><i class="fas fa-wind w-5 mr-1.5 text-gray-500 dark:text-gray-400"></i> Wind:</span>
+                            <span class="font-semibold">${displayWindSpeed}</span>
+                        </div>
+                         <div class="flex items-center justify-between">
+                            <span class="flex items-center"><i class="fas fa-cloud-rain w-5 mr-1.5 text-cyan-600 dark:text-cyan-300"></i> Rain Chance:</span>
+                            <span class="font-semibold">${chanceOfRain}%</span>
+                        </div>
+                         </div>
+                `;
+
+                forecastContainer.appendChild(card);
+            });
+
+             const forecastHeader = forecastContainer.querySelector('h2');
+             if (forecastHeader) {
+                 forecastHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+             } else {
+                 forecastContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+             }
+        }
+
+        // Optional: Add listener for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (!('theme' in localStorage)) {
+                applyInitialTheme();
+            }
+        });
+
+    </script>
+
+</body>
+</html>
