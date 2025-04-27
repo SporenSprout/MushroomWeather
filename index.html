@@ -145,20 +145,25 @@
 
     <div class="relative flex items-center justify-center py-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-4">
         <span class="flex-grow text-center">*USA Locations Only</span>
-        <button id="dark-mode-toggle" aria-label="Toggle dark mode" class="absolute right-4 p-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-            <i id="moon-icon" class="fas fa-moon text-base px-1"></i>
-            <i id="sun-icon" class="fas fa-sun text-base px-1 hidden"></i>
-        </button>
+        {/* Button removed from here */}
     </div>
 
     <header class="text-center pt-8 pb-8 md:pb-12 bg-white dark:bg-gray-800 shadow-sm transition-colors duration-300">
-         {/* Dark mode button removed from here */}
+         {/* Dark mode button removed from top */}
 
         <h1 class="font-poppins text-4xl md:text-5xl font-bold text-green-900 dark:text-green-300 transition-colors duration-300">Mushroom Weather</h1>
         <p class="font-roboto italic text-lg md:text-xl text-yellow-600 dark:text-yellow-400 mt-2">Precise Weather for Peak Foraging</p>
 
-        <div class="mt-4 text-gray-600 dark:text-gray-400">
-             <span>Provided by Spore n' Sprout</span>
+        {/* Container for "Provided By" and Dark Mode Toggle */}
+        <div class="mt-4 flex flex-col items-center space-y-2">
+            <div class="text-gray-600 dark:text-gray-400">
+                <span>Provided by Spore n' Sprout</span>
+            </div>
+            {/* Dark Mode Toggle Button Moved Here */}
+            <button id="dark-mode-toggle" aria-label="Toggle dark mode" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                <i id="moon-icon" class="fas fa-moon text-lg"></i>
+                <i id="sun-icon" class="fas fa-sun text-lg hidden"></i>
+            </button>
         </div>
 
     </header>
@@ -621,4 +626,3 @@
 
 </body>
 </html>
-
