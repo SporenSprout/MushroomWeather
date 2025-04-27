@@ -73,14 +73,14 @@
          }
 
 
-        /* Staggered fade-in animation - Adjusted for grid layout */
-         #forecast-container > *:nth-child(2) { animation-delay: 0.1s; } /* Card 1 (after header) */
-         #forecast-container > *:nth-child(3) { animation-delay: 0.2s; } /* Card 2 */
-         #forecast-container > *:nth-child(4) { animation-delay: 0.3s; } /* Card 3 */
-         #forecast-container > *:nth-child(5) { animation-delay: 0.4s; } /* Card 4 */
-         #forecast-container > *:nth-child(6) { animation-delay: 0.5s; } /* Card 5 */
-         #forecast-container > *:nth-child(7) { animation-delay: 0.6s; } /* Card 6 */
-         #forecast-container > *:nth-child(8) { animation-delay: 0.7s; } /* Card 7 */
+        /* Staggered fade-in animation - Targeting direct children */
+         #forecast-container > .forecast-card:nth-child(1) { animation-delay: 0.1s; }
+         #forecast-container > .forecast-card:nth-child(2) { animation-delay: 0.2s; }
+         #forecast-container > .forecast-card:nth-child(3) { animation-delay: 0.3s; }
+         #forecast-container > .forecast-card:nth-child(4) { animation-delay: 0.4s; }
+         #forecast-container > .forecast-card:nth-child(5) { animation-delay: 0.5s; }
+         #forecast-container > .forecast-card:nth-child(6) { animation-delay: 0.6s; }
+         #forecast-container > .forecast-card:nth-child(7) { animation-delay: 0.7s; }
 
 
         @keyframes fadeIn {
@@ -177,7 +177,12 @@
          <p id="error-message" class="mt-4 text-red-600 dark:text-red-400 hidden transition-colors duration-300"></p>
     </section>
 
-    <main id="forecast-container" class="flex-grow container mx-auto px-4 py-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 justify-items-center">
+    <div id="forecast-heading-container" class="container mx-auto px-4 text-center">
+         {/* Heading will be added here by JS */}
+    </div>
+
+    <main id="forecast-container" class="flex-grow container mx-auto px-4 py-8 flex flex-wrap justify-center gap-6 mt-8">
+        {/* Cards will be injected here */}
         </main>
 
     <footer class="text-center py-4 mt-12 text-gray-500 dark:text-gray-400 text-sm bg-white dark:bg-gray-800 shadow-inner transition-colors duration-300">
@@ -193,6 +198,7 @@
             const locationForm = document.getElementById('location-form');
             const locationInput = document.getElementById('location-input');
             const forecastContainer = document.getElementById('forecast-container');
+            const forecastHeadingContainer = document.getElementById('forecast-heading-container'); // Added
             const loadingMessage = document.getElementById('loading-message');
             const errorMessage = document.getElementById('error-message');
             const darkModeToggle = document.getElementById('dark-mode-toggle');
@@ -275,6 +281,7 @@
 
                     errorMessage.classList.add('hidden');
                     forecastContainer.innerHTML = '';
+                    forecastHeadingContainer.innerHTML = ''; // Clear previous heading
                     loadingMessage.classList.remove('hidden');
                     submitButton.disabled = true;
 
@@ -423,13 +430,15 @@
 
             // --- Display Forecast Cards ---
             function displayForecast(allPeriods, locationName, hourlyHumidityMap) {
+                // Clear previous results
                 forecastContainer.innerHTML = '';
+                forecastHeadingContainer.innerHTML = ''; // Clear previous heading too
 
+                // Add the forecast heading to its dedicated container
                 const locationHeader = document.createElement('h2');
-                locationHeader.textContent = `7-Day Forecast for ${locationName}`; // Updated header text slightly
-                // UPDATED: Increased bottom margin using mb-10
-                locationHeader.className = 'text-xl md:text-2xl font-semibold text-center text-green-800 dark:text-green-300 mb-10 col-span-full'; // Use col-span-full for grid
-                forecastContainer.appendChild(locationHeader);
+                locationHeader.textContent = `7-Day Forecast for ${locationName}`;
+                locationHeader.className = 'text-xl md:text-2xl font-semibold text-center text-green-800 dark:text-green-300 mb-10'; // Added mb-10
+                forecastHeadingContainer.appendChild(locationHeader); // Append to heading container
 
                 const dailyPeriods = allPeriods
                     .map((p, index) => ({ ...p, originalIndex: index }))
@@ -522,8 +531,8 @@
                     const card = document.createElement('div');
                     // Added justify-self-center for grid item centering
                     card.className = `forecast-card w-[220px] p-4 rounded-lg shadow-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 flex flex-col space-y-3 transition-colors duration-300 min-h-[340px] justify-self-center`;
-                    // Use displayIndex + 2 for nth-child selector because header is the first child
-                    card.style.animationDelay = `${(displayIndex + 2) * 0.08}s`;
+                    // Use displayIndex for animation delay, as header is outside now
+                    card.style.animationDelay = `${(displayIndex + 1) * 0.08}s`;
 
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
@@ -533,3 +542,83 @@
                             </div>
                             <i class="${weatherIconClass} text-2xl text-gray-600 dark:text-gray-300 opacity-80" title="${shortForecast}"></i>
                         </div>
+
+                        <div class="pt-2 flex-grow flex flex-col items-center">
+                            <p class="text-sm font-semibold mb-1 text-center">Successful Hunting</p>
+                            <div class="relative h-20 w-20 mx-auto">
+                                <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 ${radius * 2} ${radius * 2}">
+                                    <circle
+                                        class="progress-ring__background"
+                                        stroke-width="${strokeWidth}"
+                                        fill="transparent"
+                                        r="${normalizedRadius}"
+                                        cx="${radius}"
+                                        cy="${radius}"
+                                    />
+                                    <circle
+                                        class="progress-ring__circle ${likelihoodDetails.strokeClass}"
+                                        stroke-width="${strokeWidth}"
+                                        stroke-dasharray="${circumference} ${circumference}"
+                                        style="stroke-dashoffset:${strokeDashoffset}"
+                                        fill="transparent"
+                                        r="${normalizedRadius}"
+                                        cx="${radius}"
+                                        cy="${radius}"
+                                    />
+                                    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="progress-ring__text">
+                                        ${likelihoodScore}%
+                                    </text>
+                                </svg>
+                            </div>
+                            <p class="text-xs font-bold text-center mt-2 ${likelihoodDetails.iconClass}">${likelihoodDetails.label}</p>
+                            <div class="mt-auto pt-2">
+                                <i class="${likelihoodDetails.mushroomIcon} ${likelihoodDetails.iconClass} text-3xl" title="${likelihoodDetails.label}"></i>
+                            </div>
+                        </div>
+
+                        <div class="text-sm space-y-1.5 mt-2">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center"><i class="fas fa-temperature-high w-5 mr-1.5 text-red-600 dark:text-red-400"></i> High / Low:</span>
+                                <span class="font-semibold">${tempHigh}°F / ${displayTempLow}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center"><i class="fas fa-tint w-5 mr-1.5 text-blue-500 dark:text-blue-300"></i> Humidity:</span>
+                                <span class="font-semibold">${displayHumidity}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center"><i class="fas fa-wind w-5 mr-1.5 text-gray-500 dark:text-gray-400"></i> Wind:</span>
+                                <span class="font-semibold">${displayWindSpeed}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center"><i class="fas fa-cloud-rain w-5 mr-1.5 text-cyan-600 dark:text-cyan-300"></i> Rain Chance:</span>
+                                <span class="font-semibold">${chanceOfRain}%</span>
+                            </div>
+                            </div>
+                    `;
+
+                    forecastContainer.appendChild(card);
+                });
+
+                // Scroll to the forecast heading after cards are added
+                const forecastHeader = forecastHeadingContainer.querySelector('h2');
+                 if (forecastHeader) {
+                     forecastHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 } else { // Fallback if header somehow wasn't added
+                    forecastContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 }
+            }
+
+            // Optional: Add listener for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (!('theme' in localStorage)) {
+                    applyInitialTheme();
+                }
+            });
+
+        }); // End DOMContentLoaded listener
+
+    </script>
+
+</body>
+</html>
+
