@@ -422,7 +422,8 @@
 
             const locationHeader = document.createElement('h2');
             locationHeader.textContent = `7-Day Forecast for ${locationName}`; // Updated header text slightly
-            locationHeader.className = 'text-xl md:text-2xl font-semibold text-center text-green-800 dark:text-green-300 mb-6 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-7';
+            // INCREASED BOTTOM MARGIN HERE
+            locationHeader.className = 'text-xl md:text-2xl font-semibold text-center text-green-800 dark:text-green-300 mb-10 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-7';
             forecastContainer.appendChild(locationHeader);
 
             const dailyPeriods = allPeriods
